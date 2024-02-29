@@ -1,0 +1,10 @@
+---
+
+galaxy_info:
+  author: "Benjamin Hinz"
+  description: "Role for managing lvm"
+  license:
+  min_ansible_version:
+  platforms:
+
+...

@@ -1,0 +1,70 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "trigger"'
+    - if: '$CI_PIPELINE_SOURCE == "api"'
+    - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+
+variables:
+  SSH_ANSIBLE_KEY_DIR: "${CI_PROJECT_DIR}/.ssh/id_rsa"
+  ANSIBLE_VAULT_PASSWORD_FILE: "${CI_PROJECT_DIR}/.vaultfile.txt"
+  GIT_STRATEGY: clone
+  LVM_HOST:
+    value: "my-wonderful-host"
+    description: "host fqdn, multiple hosts has to be seperated with ','"
+  ANSIBLE_TAGS:
+    value: "create"
+    description: "Use 'create' or 'extend' for your purpose."
+  LVM_CREATE_VARS:
+    value: |-
+      vg: "vg_hello"
+      lv: "bye"
+      size: "100%VG"
+      disksize: 22
+      filesystem: "xfs"
+      mountpoint: "/var/lib/hello"
+      owner: "root"
+      group: "root" 
+      mode: "0700"
+      # THIS VARIABLE IS DEFAULT related to the vg/lv names BUT CAN BE SET MANUALLY:
+      # lvm_path: "/dev/vg_name/lv_name"
+    description: "Only neccessary on method 'create' fillout variables for your purpose."
+  LVM_EXTEND_VARS:
+    value: |-
+      vg: "vg_hello"
+      lv: "bye"
+      disksize: 8
+    description: "Only neccessary on method 'extend' fillout variables for your purpose."
+
+default:
+  tags:
+    - ansible
+
+before_script:
+  - mkdir .ssh
+  - chmod 0700 .ssh/
+  - echo -en ${SSH_ANSIBLE_KEY} > ${SSH_ANSIBLE_KEY_DIR}
+  - chmod 0600 ${SSH_ANSIBLE_KEY_DIR}
+  - echo "${VAULT_ANSIBLE_PASS}" > ${ANSIBLE_VAULT_PASSWORD_FILE}
+  - sed -i "s/gitlab.url/${GITLAB_ACCESS_TOKEN_NAME}:${GITLAB_ACCESS_TOKEN}@gitlab.url/g" requirements.yml
+  - ansible-galaxy install -r requirements.yml -p ./roles/ -v -s gitlab.url
+
+stages:
+  - create_lvm_mointpoint
+  - extend_logical_volume
+
+create_lvm_mointpoint:
+  stage: create_lvm_mointpoint
+  script:
+    - echo -en "${LVM_CREATE_VARS}" > lvm_vars.yml
+    - export ANSIBLE_CONFIG=${CI_PROJECT_DIR}/ansible.cfg; ansible-playbook -i ${LVM_HOST}, lvm_mointpoint.yml -t create -e host=${LVM_HOST} -e "@lvm_vars.yml" --vault-password-file $ANSIBLE_VAULT_PASSWORD_FILE
+  rules:
+    - if: '$ANSIBLE_TAGS == "create"'
+
+extend_logical_volume:
+  stage: extend_logical_volume
+  script:
+    - echo -en "${LVM_EXTEND_VARS}" > lvm_vars.yml
+    - export ANSIBLE_CONFIG=${CI_PROJECT_DIR}/ansible.cfg; ansible-playbook -i ${LVM_HOST}, lvm_mointpoint.yml -t extend -e host=${LVM_HOST} -e @lvm_vars.yml --vault-password-file $ANSIBLE_VAULT_PASSWORD_FILE
+  rules:
+    - if: '$ANSIBLE_TAGS == "extend"'

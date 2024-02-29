@@ -1,0 +1,90 @@
+### WHEN INCLUDING THIS TASKFILE MAKE SURE LOOP IS DEFINED
+
+#- debug:
+#    var: ansible_mounts
+
+- name: "[CHECK:GATHER_FACTS] Gather neccessary facts for check"
+  setup:
+    gather_subset:
+      - "mounts"
+
+- name: "[CHECK:MOUNTPOINT] Set fact for gathered mointpoints based on ansible facts"
+  set_fact:
+    found_mounts: "{{ ansible_mounts | map(attribute='mount') | list}}"
+- name: "[CHECK:MOUNTPOINT] Check for mountpoints - not exist"
+  debug:
+    msg: "mountpoint '{{ mountpoint }} not found in ansible facts -> not exists'"
+  when: mountpoint not in found_mounts
+
+- name: "[CHECK:MOUNTPOINT] Set fact mountpoint_exist if not exists"
+  set_fact:
+    mountpoint_exist: false
+  when: mountpoint not in found_mounts
+
+- name: "[CHECK:MOUNTPOINT] Check for mountpoints - exist"
+  debug:
+    msg: "mountpoint '{{ mountpoint }} found in ansible facts -> exists'"
+  when: mountpoint  in found_mounts
+
+- name: "[CHECK:MOUNTPOINT] Set fact mountpoint_exist if exists"
+  set_fact:
+    mountpoint_exist: true
+  when: mountpoint in found_mounts
+
+
+- name: "[CHECK:MOUNTPOINT] getent for user for ansible facts"
+  ansible.builtin.getent:
+    database: passwd
+#    key: "{{ owner }}"
+- name: "[CHECK:MOUNTPOINT] getent for group for ansible facts"
+  ansible.builtin.getent:
+    database: group
+#    key: "{{ group }}"
+
+- name: "[CHECK:MOUNTPOINT] Set fact for gathered user+group based on ansible facts"
+  set_fact:
+    found_users: "{{ ansible_facts.getent_passwd | list}}"
+    found_groups: "{{ ansible_facts.getent_group | list}}"
+
+
+- name: "[CHECK:MOUNTPOINT] Check for mountpoint owner - not exist"
+  debug:
+    msg: "user: '{{ owner }}' not found in ansible facts -> not exists'"
+  when: owner not in found_users
+
+- name: "[CHECK:MOUNTPOINT] Set fact user_exist if not exists"
+  set_fact:
+    user_exist: false
+  when: owner not in found_users
+
+- name: "[CHECK:MOUNTPOINT] Check for mountpoint owner - exist"
+  debug:
+    msg: "user: '{{ owner }}' found in ansible facts -> exists'"
+  when: owner in found_users
+
+- name: "[CHECK:MOUNTPOINT] Set fact user_exist if exists"
+  set_fact:
+    user_exist: true
+  when: owner in found_users
+
+- name: "[CHECK:MOUNTPOINT] Check for mountpoint group - not exist"
+  debug:
+    msg: "group: '{{ group }}' not found in ansible facts -> not exists'"
+  when: group not in found_groups
+
+- name: "[CHECK:MOUNTPOINT] Set fact group_exist if not exists"
+  set_fact:
+    group_exist: false
+  when: group not in found_groups
+
+- name: "[CHECK:MOUNTPOINT] Check for mountpoint group - exist"
+  debug:
+    msg: "group: '{{ group }}' found in ansible facts -> exists'"
+  when: group in found_groups
+
+- name: "[CHECK:MOUNTPOINT] Set fact group_exist if exists"
+  set_fact:
+    group_exist: true
+  when: group in found_groups
+
+

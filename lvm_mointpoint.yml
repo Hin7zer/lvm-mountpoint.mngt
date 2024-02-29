@@ -1,0 +1,23 @@
+- hosts: "{{ host }}"
+  remote_user: "{{ remote_ssh_user | default('my_custom_user', true) }}"
+  become: yes
+  vars:
+    ### LVM_METHOD is a default and needs to be set. Use either "create" or "extend"
+    ## Method Create needs the following variables
+    # vg: "vg_hello"
+    # lv: "bye"
+    # size: "100%VG"
+    # disksize: 22
+    # filesystem: "xfs"
+    # mountpoint: "/var/lib/hello"
+    # owner: "root"
+    # group: "root" 
+    # mode: '0700'
+    ## Method Extend needs the following variables
+    # vg: "vg_hello"
+    # lv: "bye"
+    # disksize: 8
+    ### LVM_PATH is a default and can be changed via extra vars!
+    lvm_path: "/dev/{{vg}}/{{lv}}" 
+  roles:
+    - ../lvm-mountpoint.mngt

@@ -1,0 +1,60 @@
+- name: "[REQUIREMENTS:LVM:EXTEND] Ensure required variables are defined"
+  ansible.builtin.assert:
+    that:
+      - vg is defined
+      - lv is defined
+      - disksize is defined
+    fail_msg: "Missing variables"
+  when: skip_lvm is undefined
+
+- block:
+  - name: "[INCLUDE:CHECKS] include tasks from file check_unused_disks.yml"
+    include_tasks: check_unused_disks.yml
+  - name: "[LVM] FAIL: If unused disks have found before start - length: {{ unused_disks_length }}"
+    fail:
+      msg: "Unused disks found. Please check manually and fix for unused disks before continue."
+    when: unused_disks_length | int >= 1  
+  when: skip_lvm is undefined
+
+- name: "[INCLUDE:CHECKS] include tasks from file check_lvm.yml"
+  include_tasks: check_lvm.yml
+  when:  skip_lvm is undefined
+
+- block:
+  - name: "[DISKS:INCLUDE:SET_VAR] Set var 'disksize' to {{ disksize }} to apply the variable globally if this role is included by another playbook"
+    set_fact:
+      disksize: "{{ disksize }}"
+  - name: "[INCLUDE:DISK] include tasks from file include_disk_role.yml" 
+    include_tasks: include_disk_role.yml
+    when: 
+      - vg_exist | bool
+      - lv_exist | bool
+  when:  skip_lvm is undefined
+
+- block:
+  - name: "[INCLUDE:CHECKS] include tasks from file check_unused_disks.yml"
+    include_tasks: check_unused_disks.yml
+  - name: "[LVM] FAIL: If more than 2 unused disks were found - length: {{ unused_disks_length }}"
+    fail:
+      msg: "Unused disks found. Please check manually and fix for unused disks before continue."
+    when: unused_disks_length | int >= 2
+  when:  skip_lvm is undefined
+
+- block:
+
+  - name: "[EXTEND-LVM] Create physical volume"
+    ansible.builtin.shell: "pvcreate {{ latest_pvs_path }}"
+    args:
+      executable: /bin/bash
+
+  - name: "[EXTEND-LVM] Extend volume group"
+    ansible.builtin.shell: "vgextend {{ vg }} {{ latest_pvs_path }}"
+
+  - name: "[EXTEND-LVM] Extend logical volume"
+    lvol:
+      vg: "{{ vg }}"
+      lv: "{{ lv }}"
+      size: +100%FREE
+      resizefs: true
+  become: yes
+  when: skip_lvm is undefined

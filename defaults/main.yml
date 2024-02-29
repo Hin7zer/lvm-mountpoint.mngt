@@ -1,0 +1,2 @@
+# default vars, can be overwritten by extra vars for example
+lvm_path: "/dev/{{vg}}/{{lv}}" 

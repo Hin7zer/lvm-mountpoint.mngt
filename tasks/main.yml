@@ -1,0 +1,55 @@
+
+- name: "[REQUIREMENTS:LVM:CREATE] Ensure required variables are defined"
+  ansible.builtin.assert:
+    that:
+      - vg is defined
+      - lv is defined
+      - size is defined
+      - filesystem is defined
+      - mountpoint is defined
+      - disksize is defined
+      - lvm_path is defined
+      - owner is defined
+      - group is defined
+      - mode is defined
+    fail_msg: "Missing variables"
+  tags:
+    - never
+    - create
+  #when: lvm_method == "create"
+- name: "[INCLUDE:LVM:CREATE] Include task file create_lvm.yml"
+  import_tasks: create_lvm.yml
+#  vars:
+#    vg: "{{ item.vg }}"
+#    lv: "{{ item.lv }}"
+#    size: "{{ item.size }}"
+#    filesystem: "{{ item.filesystem }}"
+#    mountpoint: "{{ item.mountpoint }}"
+#    disksize: "{{ item.disksize }}"
+#    lvm_path: "{{ item.lvm_path }}"
+#    owner: "{{ item.owner }}"
+#    group: "{{ item.group }}"
+#    mode: "{{ item.mode }}"
+#  loop: "{{ lvm_default_mountpoint_definitions }}"
+  tags:
+    - never
+    - create
+  #when: lvm_method == "create"
+- name: "[REQUIREMENTS:LVM:EXTEND] Ensure required variables are defined"
+  ansible.builtin.assert:
+    that:
+      - vg is defined
+      - lv is defined
+      - disksize is defined
+    fail_msg: "Missing variables"
+  tags:
+    - never
+    - extend
+  #when: lvm_method == "extend"
+- name: "[INCLUDE:LVM:EXTEND] Include task file extend_lvm.yml"
+  import_tasks: extend_lvm.yml
+  tags:
+    - never
+    - extend
+  #when: lvm_method == "extend"
+

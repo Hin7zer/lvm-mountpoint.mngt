@@ -1,0 +1,23 @@
+- name: "[DISKS:DEFAULTS] Set default host_source to 'custom_name' if not defined"
+  set_fact: 
+    host_source: "custom_name"
+  when: skip_add_disk is undefined and host_source is undefined
+
+- block:
+  - name: "[DISKS:INCLUDE] include role add new disk to host"
+    include_role: 
+      name: "custom_name"
+      tasks_from: "{{ include_task4disk }}"
+    vars:
+      custom_var4disk: "{{disksize}}"
+    loop:
+      - specific_task1.yml
+      - specific_task2.yml
+    loop_control:
+      loop_var: include_task4disk
+
+  - name: "[DISKS:PAUSE] Pause for {{ pause | default('30', true) }}s"
+    pause: 
+      seconds: "{{ pause | default('30', true) }}"
+  when: 
+    - skip_add_disk is undefined and host_source == "custom_name"

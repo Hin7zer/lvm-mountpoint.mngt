@@ -1,0 +1,57 @@
+### WHEN INCLUDING THIS TASKFILE MAKE SURE LOOP IS DEFINED
+
+#- debug:
+#    var: ansible_lvm
+
+- name: "[CHECK:GATHER_FACTS] Gather neccessary facts for check"
+  setup:
+    gather_subset:
+      - "all"
+
+- name: "[CHECK:LVM] Set fact for gathered vgs/lvs based on ansible facts"
+  set_fact:
+    found_vgs: "{{ ansible_lvm.vgs | list}}"
+    found_lvs: "{{ ansible_lvm.lvs | list}}"
+    found_pvs: "{{ ansible_lvm.pvs | list}}"
+
+- name: "[CHECK:LVM] Check for vgs - not exist"
+  debug:
+    msg: "VG: '{{ vg }}' not found in ansible facts -> not exists'"
+  when: vg not in found_vgs
+
+- name: "[CHECK:LVM] Set fact vg_exist if not exists"
+  set_fact:
+    vg_exist: false
+  when: vg not in found_vgs
+
+- name: "[CHECK:LVM] Check for vgs - exist"
+  debug:
+    msg: "VG: '{{ vg }}' found in ansible facts -> exists'"
+  when: vg in found_lvs
+
+- name: "[CHECK:LVM] Set fact vg_exist if exists"
+  set_fact:
+    vg_exist: true
+  when: vg in found_vgs
+
+- name: "[CHECK:LVM] Check for lvs - not exist"
+  debug:
+    msg: "LV: '{{ lv }}' not found in ansible facts -> not exists'"
+  when: lv not in found_lvs
+
+- name: "[CHECK:LVM] Set fact lv_exist if exists"
+  set_fact:
+    lv_exist: false
+  when: lv not in found_lvs
+
+- name: "[CHECK:LVM] Check for lvs - exist"
+  debug:
+    msg: "LV: '{{ lv }}' found in ansible facts -> exists'"
+  when: lv in found_lvs
+
+- name: "[CHECK:LVM] Set fact lv_exist if exists"
+  set_fact:
+    lv_exist: true
+  when: lv in found_lvs
+
+

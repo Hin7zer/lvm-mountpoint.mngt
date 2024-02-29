@@ -1,0 +1,96 @@
+- name: "[REQUIREMENTS:LVM:CREATE] Ensure required variables are defined"
+  ansible.builtin.assert:
+    that:
+      - vg is defined
+      - lv is defined
+      - size is defined
+      - filesystem is defined
+      - mountpoint is defined
+      - disksize is defined
+      - lvm_path is defined
+      - owner is defined
+      - group is defined
+      - mode is defined
+    fail_msg: "Missing variables"
+  when: skip_lvm is undefined
+
+- block:
+  - name: "[INCLUDE:CHECKS] include tasks from file check_unused_disks.yml"
+    include_tasks: check_unused_disks.yml
+  - name: "[LVM] FAIL: If unused disks have found before start - length: {{ unused_disks_length }}"
+    fail:
+      msg: "Unused disks found. Please check manually and fix for unused disks before continue."
+    when: unused_disks_length | int >= 1 
+  when: skip_lvm is undefined
+
+- name: "[INCLUDE:CHECKS] include tasks from file check_mointpoints.yml"
+  include_tasks: check_mointpoint.yml
+  when:  skip_lvm is undefined
+
+- name: "[INCLUDE:CHECKS] include tasks from file check_lvm.yml"
+  include_tasks: check_lvm.yml
+  when: skip_lvm is undefined
+
+- block:
+  - name: "[LVM] FAIL: If mountpoint owner(user) or group does not exists}"
+    fail:
+      msg: "owner(user)/group for mountpoint not found. Please check and fix."
+    when: 
+      - not user_exist | bool
+      - not group_exist | bool
+  - name: "[DISKS:INCLUDE:SET_VAR] Set var 'disksize' to {{ disksize }} to apply the variable globally if this role is included by another playbook"
+    set_fact:
+      disksize: "{{ disksize }}"
+  - name: "[INCLUDE:DISK] include tasks from file attach_vm_disk.yml" 
+    include_tasks: include_disk_role.yml
+    when: 
+      - not mountpoint_exist | bool
+      - not lv_exist | bool
+  when:  skip_lvm is undefined
+
+- block:
+  - name: "[INCLUDE:CHECKS] include tasks from file check_unused_disks.yml"
+    include_tasks: check_unused_disks.yml
+  - name: "[LVM] FAIL: If more than 2 unused disks were found - length: {{ unused_disks_length }}"
+    fail:
+      msg: "Unused disks found. Please check manually and fix for unused disks before continue."
+    when: unused_disks_length | int >= 2  
+  when: skip_lvm is undefined
+
+- block:
+  - name: "[LVM] Create Volume Group '{{ vg }}' with {{ latest_pvs_path }} "
+    shell: "vgcreate {{ vg }} {{ latest_pvs_path }}"
+    when: not vg_exist | bool
+ # - name: "[LVM] Extend Volume Group '{{ vg }}' with {{ latest_pvs_path }} because VG already exists"
+    #shell: "vgextend {{ vg }} {{ latest_pvs_path }}"
+    #when: vg_exist | bool
+  - name: "[LVM] Create Logical Volume '{{ lv }}'"
+    lvol:
+      vg: "{{ vg }}"
+      lv: "{{ lv }}"
+      size: "{{ size }}"
+      pvs: "{{ latest_pvs_path }}"
+    when: not lv_exist | bool
+  - name: "[LVM] Create '{{ filesystem }}' Filesystem on '{{ lvm_path }}'"
+    filesystem:
+      fstype: "{{ filesystem }}"
+      dev: "{{ lvm_path }}"
+    when: not lv_exist | bool
+  - name: "[LVM] Mount lvm '{{ lvm_path }}' on mountpoint '{{ mountpoint }}' as '{{ filesystem }}'"
+    mount:
+      path: "{{ mountpoint }}"
+      state: mounted
+      fstype: "{{ filesystem }}"
+      src: "{{ lvm_path }}"
+  - name: "[LVM] Create mointpoint directory '{{ mountpoint }}'"
+    file:
+      path: "{{ mountpoint }}"
+      owner: "{{ owner }}"
+      group: "{{ group }}"
+      mode: '{{ mode }}'
+      state: directory
+    when: 
+      - user_exist | bool
+      - group_exist | bool
+  become: true
+  when: not mountpoint_exist | bool  and skip_lvm is undefined

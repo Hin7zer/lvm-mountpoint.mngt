@@ -1,0 +1,51 @@
+### WHEN INCLUDING THIS TASKFILE MAKE SURE LOOP IS DEFINED
+
+#- name: debug facts of disks in loop
+#  debug:
+#    var: ansible_devices
+
+- name: "[CHECK:GATHER_FACTS] Gather neccessary facts for check"
+  setup:
+    gather_subset:
+      - "devices"
+
+- name: "[CHECK:DISKS] Clear Variable"
+  set_fact:
+    unused_disks: []
+    unused_disks_length: 0
+
+- name: "[CHECK:DISKS] Set facts for unused disks"
+  set_fact:
+    unused_disks: "{{ unused_disks|default([]) + [ { 'name': item.key, 'size': ansible_devices[item.key].size} ] }}"
+  when:
+  - not item.value.partitions
+  - not item.value.holders
+  - not item.value.links.ids
+  - item.key | regex_search ("sd")
+  with_dict: "{{ ansible_devices }}"
+
+- name: "[CHECK:DISKS] Set fact of unnused disk count"
+  set_fact:
+    unused_disks_length: "{{ unused_disks| length }}"
+  when: unused_disks is defined
+
+- name: "[CHECK:DISKS] Debug message info of unused disks length "
+  debug:
+    msg: "Length of current unused disks: {{ unused_disks_length }}"
+  when: unused_disks_length is defined
+
+- name: "[CHECK:DISKS] Debug message info of unused disks "
+  debug:
+    msg: "Disk '{{ item.name }}' seems to be unused with a size of '{{ item.size }}', make sure unused disks are assigned to something like a volume-group"
+  loop: "{{ unused_disks }}"
+  when: unused_disks_length | int >= 0
+
+- name: "[CHECK:DISKS] Set Facts of latest disk"
+  set_fact:
+    latest_pvs: "{{ item.name }}"
+    latest_pvs_path: "/dev/{{ item.name }}"
+  loop: "{{ unused_disks }}"
+  when: unused_disks_length | int == 1
+
+
+

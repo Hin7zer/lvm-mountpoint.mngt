@@ -1,0 +1,8 @@
+---
+roles:
+  - name: disk_role
+    scm: git
+    src: https://gitlab.url/disk_role
+    version: main
+
+...
